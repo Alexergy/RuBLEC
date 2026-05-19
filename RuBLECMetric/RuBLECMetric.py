@@ -303,12 +303,10 @@ class SQLParser:
 class ConfigLoader:
     """Загрузчик конфигурационных JSON файлов"""
     
-    # Используем абсолютный путь
-    if not os.path.isabs(self.config_dir):
-        # Если путь относительный, делаем его абсолютным относительно текущего файла
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.config_dir = os.path.join(base_dir, self.config_dir)
-    self.config_loader = ConfigLoader(self.config_dir)
+    def __init__(self, config_dir: str):
+        """Инициализация загрузчика конфигурации"""
+        self.config_dir = config_dir
+        self._cache = {}
     
     def _load_json(self, filename: str) -> Dict:
         if filename in self._cache:
