@@ -545,7 +545,7 @@ class RuBLECMetric:
                 if op_type in self.opposites:
                     for opp in self.opposites[op_type]:
                         if opp in text_lower or any(opp in lemma for lemma in text_lemmas):
-                            matched_weight -= weight * 0.5
+                            matched_weight = 0
                             errors.append(f"opposite_{op_type}")
                             break
         
