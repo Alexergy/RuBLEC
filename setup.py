@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="RuBLECMetric",
-    version="1.0.0",
+    version="1.0.1",
     author="Alexandra Noskova",
     description="Russian BLEC Metric for SQL-to-Text Evaluation",
     long_description=long_description,
@@ -19,7 +19,10 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.7",
-    install_requires=[],  # Нет внешних зависимостей!
+    install_requires=[
+        'nltk',
+        'rsmorphy-lemmatizer',
+    ],  
     include_package_data=True,
     package_data={
         "RuBLEC": ["config/*.json"],
