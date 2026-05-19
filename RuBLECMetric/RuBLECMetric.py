@@ -303,9 +303,12 @@ class SQLParser:
 class ConfigLoader:
     """Загрузчик конфигурационных JSON файлов"""
     
-    def __init__(self, config_dir: str):
-        self.config_dir = config_dir
-        self._cache = {}
+    # Используем абсолютный путь
+    if not os.path.isabs(config_dir):
+        # Если путь относительный, делаем его абсолютным относительно текущего файла
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_dir = os.path.join(base_dir, config_dir)
+    self.config_loader = ConfigLoader(config_dir)
     
     def _load_json(self, filename: str) -> Dict:
         if filename in self._cache:
@@ -542,7 +545,7 @@ class RuBLECMetric:
                 if op_type in self.opposites:
                     for opp in self.opposites[op_type]:
                         if opp in text_lower or any(opp in lemma for lemma in text_lemmas):
-                            matched_weight -= weight * 0.5
+                            matched_weight = 0
                             errors.append(f"opposite_{op_type}")
                             break
         

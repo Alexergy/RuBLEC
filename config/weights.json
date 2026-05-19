@@ -2,8 +2,8 @@
   "description": "Веса компонентов для итогового скора",
   "version": "1.0",
   "weights": {
-    "tables": 0.30,
-    "operators": 0.25,
+    "tables": 0.25,
+    "operators": 0.30,
     "aggregations": 0.15,
     "order": 0.10,
     "limit": 0.05,
