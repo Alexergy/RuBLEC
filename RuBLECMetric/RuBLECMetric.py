@@ -370,13 +370,8 @@ class RuBLECMetric:
     - Опциональная фильтрация по частям речи
     - Умные стоп-слова (сохраняют SQL операторы)
     """
-    
+
     def __init__(self, config_dir: str = None, use_pos_filter: bool = False):
-        """
-        Аргументы:
-            config_dir: путь к папке с JSON конфигами
-            use_pos_filter: фильтровать ли слова по частям речи (только с лемматизацией)
-        """
         if config_dir is None:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             config_dir = os.path.join(base_dir, 'config')
@@ -384,16 +379,14 @@ class RuBLECMetric:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             config_dir = os.path.join(base_dir, config_dir)
         
-        self.use_pos_filter = use_pos_filter and POS_TAGGING_AVAILABLE and USE_LEMMATIZER
+        self.config_dir = config_dir
+        self.use_pos_filter = use_pos_filter
         
         self.sql_parser = SQLParser()
         self.parse_cache = {}
         
-        # Загрузка конфигурации
-        self.config_dir = config_dir
         self.config_loader = ConfigLoader(self.config_dir)
         
-        # Загрузка словарей
         self.table_translations = self.config_loader.get_tables()
         self.operator_configs = self.config_loader.get_operators()
         self.aggregation_configs = self.config_loader.get_aggregations()
@@ -414,37 +407,25 @@ class RuBLECMetric:
                 'hallucination': 0.15,
             }
         
-        # Основной словарь SQL → русские синонимы
         self.sql_to_russian = self.config_loader.get_sql_to_russian()
-        
-        # Построение обратного словаря
         self._build_reverse_dict()
-        
-        # Информация о состоянии
         self._print_status()
     
     def _print_status(self):
-        """Выводит информацию о состоянии метрики"""
         print("=" * 50)
         print("RuBLECMetric инициализирована")
         print("=" * 50)
         if USE_LEMMATIZER and LEMMATIZATION_AVAILABLE:
             print("✅ Лемматизация: rsmorphy-lemmatizer (точная)")
         elif STEMMER_AVAILABLE:
-            print("⚠️ Лемматизация: SnowballStemmer (стемминг, менее точный)")
+            print("⚠️ Лемматизация: SnowballStemmer (стемминг)")
         else:
-            print("⚠️ Лемматизация: отсутствует (буквальное сравнение)")
-        
-        if self.use_pos_filter:
-            print("✅ Фильтрация по частям речи: включена")
-        else:
-            print("📝 Фильтрация по частям речи: выключена")
+            print("⚠️ Лемматизация: отсутствует")
         
         print(f"📚 Стоп-слов: {len(RUSSIAN_STOP_WORDS)} (SQL операторы сохранены)")
         print("=" * 50)
     
     def _build_reverse_dict(self):
-        """Строит обратный словарь для быстрого поиска"""
         self.russian_to_operator = {}
         for op, synonyms in self.sql_to_russian.items():
             for syn in synonyms:
@@ -453,7 +434,6 @@ class RuBLECMetric:
                 self.russian_to_operator[syn] = op
     
     def _process_text(self, text: str) -> List[str]:
-        """Обработка текста через TextProcessor"""
         return TextProcessor.process(text, use_pos_filter=self.use_pos_filter)
     
     def _get_operator_weight(self, op_type: str) -> float:
@@ -465,7 +445,6 @@ class RuBLECMetric:
         
         result = {
             'tables': self.sql_parser.extract_tables(sql),
-            'values': self.sql_parser.extract_values(sql),
             'operators': self.sql_parser.extract_operators(sql),
             'aggregations': self.sql_parser.extract_aggregations(sql),
             'limit': self.sql_parser.extract_limit(sql),
@@ -643,8 +622,6 @@ class RuBLECMetric:
         return 1.0, []
     
     def calculate_blec(self, sql: str, text: str) -> Dict:
-        """Вычисляет BLEC оценку"""
-        
         sql_components = self._parse_sql_cached(sql)
         text_lemmas = self._process_text(text)
         
@@ -682,7 +659,9 @@ class RuBLECMetric:
         total_score = sum(self.weights.get(comp, 0.1) * score 
                           for comp, score in component_scores.items())
         
-        critical_penalty = len([e for e in all_errors if 'opposite' in e or 'hallucination' in e]) * 0.1
+        opposite_count = len([e for e in all_errors if 'opposite' in e])
+        hallucination_count = len([e for e in all_errors if 'hallucination' in e])
+        critical_penalty = opposite_count * 0.20 + hallucination_count * 0.10
         total_score = max(0.0, min(1.0, total_score - critical_penalty))
         
         return {
@@ -694,7 +673,6 @@ class RuBLECMetric:
                 'tables_found': list(sql_components['tables']),
                 'operators_found': list(sql_components['operators'].keys()),
                 'aggregations_found': sql_components['aggregations'],
-                'values_found': list(sql_components['values'])[:5],
                 'limit': sql_components['limit'],
                 'order': sql_components['order'],
                 'text_lemmas': text_lemmas[:10],
