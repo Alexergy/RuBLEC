@@ -7,11 +7,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name="RuBLECMetric",
     version="1.0.0",
-    author="Your Name",
+    author="Alexandra Noskova",
     description="Russian BLEC Metric for SQL-to-Text Evaluation",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/YOUR_USERNAME/RuBLEC",
+    url="https://github.com/Alexergy/RuBLEC",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
