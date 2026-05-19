@@ -746,7 +746,3 @@ def quick_test():
         print(f"Score: {result['score']:.3f} {status}")
         if result['errors']:
             print(f"  Ошибки: {', '.join(result['errors'][:2])}")
-
-
-if __name__ == "__main__":
-    quick_test()
