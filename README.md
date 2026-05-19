@@ -14,10 +14,10 @@
 
 ```python
 # Способ 1: Прямая установка из GitHub
-!pip install git+https://github.com/YOUR_USERNAME/RuBLEC.git
+!pip install git+https://github.com/Alexergy/RuBLEC.git
 
 # Способ 2: Клонирование репозитория
-!git clone https://github.com/YOUR_USERNAME/RuBLEC.git
+!git clone https://github.com/Alexergy/RuBLEC.git
 %cd RuBLEC
 !pip install -e .
 ```
