@@ -359,7 +359,6 @@ class ConfigLoader:
         
         return result
 
-
 # ============================================================
 # ОСНОВНОЙ КЛАСС RuBLECMetric
 # ============================================================
@@ -372,19 +371,27 @@ class RuBLECMetric:
     - Умные стоп-слова (сохраняют SQL операторы)
     """
     
-    def __init__(self, config_dir: str = "config", use_pos_filter: bool = False):
+    def __init__(self, config_dir: str = None, use_pos_filter: bool = False):
         """
         Аргументы:
             config_dir: путь к папке с JSON конфигами
             use_pos_filter: фильтровать ли слова по частям речи (только с лемматизацией)
         """
+        if config_dir is None:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            config_dir = os.path.join(base_dir, 'config')
+        elif not os.path.isabs(config_dir):
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            config_dir = os.path.join(base_dir, config_dir)
+        
         self.use_pos_filter = use_pos_filter and POS_TAGGING_AVAILABLE and USE_LEMMATIZER
         
         self.sql_parser = SQLParser()
         self.parse_cache = {}
         
         # Загрузка конфигурации
-        self.config_loader = ConfigLoader(config_dir)
+        self.config_dir = config_dir
+        self.config_loader = ConfigLoader(self.config_dir)
         
         # Загрузка словарей
         self.table_translations = self.config_loader.get_tables()
