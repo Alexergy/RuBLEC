@@ -20,6 +20,7 @@
 !git clone https://github.com/YOUR_USERNAME/RuBLEC.git
 %cd RuBLEC
 !pip install -e .
+```
 
 ## Использование
 
