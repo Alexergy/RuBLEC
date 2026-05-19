@@ -19,10 +19,7 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.7",
-    install_requires=[
-        'nltk',
-        'rsmorphy-lemmatizer',
-    ],  
+    install_requires=[],  
     include_package_data=True,
     package_data={
         "RuBLEC": ["config/*.json"],
