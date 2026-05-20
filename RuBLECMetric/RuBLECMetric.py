@@ -267,6 +267,27 @@ class SQLParser:
                         operators['in'].append([v.strip() for v in match.group(1).split(',')])
         
         return dict(operators)
+
+    @staticmethod
+    def extract_logical_operators(sql: str) -> List[str]:
+        """Извлекает логические операторы AND, OR, NOT из SQL"""
+        sql_upper = sql.upper()
+        operators = []
+        
+        # Важен порядок: NOT должен проверяться отдельно от AND/OR
+        # Ищем AND как отдельное слово
+        if re.search(r'\bAND\b', sql_upper):
+            operators.append('and')
+        
+        # Ищем OR как отдельное слово
+        if re.search(r'\bOR\b', sql_upper):
+            operators.append('or')
+        
+        # Ищем NOT как отдельное слово (важно для != и NOT IN)
+        if re.search(r'\bNOT\b', sql_upper):
+            operators.append('not')
+        
+        return operators
     
     @staticmethod
     def extract_aggregations(sql: str) -> List[str]:
@@ -445,6 +466,7 @@ class RuBLECMetric:
         
         result = {
             'tables': self.sql_parser.extract_tables(sql),
+            'logical_operators': self.sql_parser.extract_logical_operators(sql),  # ← ДОБАВИТЬ
             'operators': self.sql_parser.extract_operators(sql),
             'aggregations': self.sql_parser.extract_aggregations(sql),
             'limit': self.sql_parser.extract_limit(sql),
@@ -454,7 +476,7 @@ class RuBLECMetric:
         if len(self.parse_cache) > 500:
             self.parse_cache.pop(next(iter(self.parse_cache)))
         self.parse_cache[sql] = result
-        
+            
         return result
     
     def _check_table_match(self, sql_tables: Set[str], text_lemmas: List[str]) -> Tuple[float, List[str]]:
@@ -532,6 +554,60 @@ class RuBLECMetric:
                             matched_weight = 0
                             errors.append(f"opposite_{op_type}")
                             break
+        
+        score = matched_weight / total_weight if total_weight > 0 else 1.0
+        return max(0.0, min(1.0, score)), errors
+
+    def _check_logical_operators_match(self, sql_logical: List[str], text: str, text_lemmas: List[str]) -> Tuple[float, List[str]]:
+        """Проверяет соответствие логических операторов AND/OR/NOT"""
+        if not sql_logical:
+            return 1.0, []
+        
+        matched_weight = 0
+        total_weight = 0
+        errors = []
+        text_lower = text.lower()
+        
+        # Веса для логических операторов (высокие, так как они критичны для смысла)
+        weights = {'and': 1.5, 'or': 1.5, 'not': 1.5}
+        
+        for op in sql_logical:
+            weight = weights.get(op, 1.0)
+            total_weight += weight
+            
+            synonyms = self.sql_to_russian.get(op, [op])
+            
+            found = False
+            for syn in synonyms:
+                if any(syn in lemma for lemma in text_lemmas):
+                    found = True
+                    break
+                if syn in text_lower:
+                    found = True
+                    break
+            
+            if found:
+                matched_weight += weight
+            else:
+                errors.append(f"missing_logical_{op}")
+                
+                # Специальная проверка: AND → OR (противоположность)
+                if op == 'and' and ('или' in text_lower or 'либо' in text_lower):
+                    matched_weight -= weight * 0.8
+                    errors.append(f"opposite_logical_and→or")
+                
+                # Специальная проверка: OR → AND (противоположность)
+                elif op == 'or' and ('и' in text_lower or 'а также' in text_lower):
+                    matched_weight -= weight * 0.8
+                    errors.append(f"opposite_logical_or→and")
+                
+                # Специальная проверка: NOT отсутствует
+                elif op == 'not':
+                    # Если в тексте нет отрицания, но должно быть
+                    negative_words = ['не', 'не является', 'отличен', 'кроме']
+                    if not any(neg in text_lower for neg in negative_words):
+                        matched_weight -= weight * 0.7
+                        errors.append(f"missing_negation")
         
         score = matched_weight / total_weight if total_weight > 0 else 1.0
         return max(0.0, min(1.0, score)), errors
@@ -631,6 +707,12 @@ class RuBLECMetric:
         operator_score, operator_errors = self._check_operators_match(
             sql_components['operators'], text, text_lemmas
         )
+        
+        # 🔥 НОВАЯ ПРОВЕРКА ЛОГИЧЕСКИХ ОПЕРАТОРОВ
+        logical_score, logical_errors = self._check_logical_operators_match(
+            sql_components.get('logical_operators', []), text, text_lemmas
+        )
+        
         agg_score, agg_errors = self._check_aggregations_match(
             sql_components['aggregations'], text_lemmas
         )
@@ -644,12 +726,13 @@ class RuBLECMetric:
             sql_components['tables'], text, text_lemmas
         )
         
-        all_errors = (table_errors + operator_errors + agg_errors + 
+        all_errors = (table_errors + operator_errors + logical_errors + agg_errors + 
                       order_errors + limit_errors + hallucination_errors)
         
         component_scores = {
             'tables': table_score,
             'operators': operator_score,
+            'logical': logical_score,  # ← НОВЫЙ КОМПОНЕНТ
             'aggregations': agg_score,
             'order': order_score,
             'limit': limit_score,
@@ -672,6 +755,7 @@ class RuBLECMetric:
             'details': {
                 'tables_found': list(sql_components['tables']),
                 'operators_found': list(sql_components['operators'].keys()),
+                'logical_operators_found': sql_components.get('logical_operators', []),
                 'aggregations_found': sql_components['aggregations'],
                 'limit': sql_components['limit'],
                 'order': sql_components['order'],
