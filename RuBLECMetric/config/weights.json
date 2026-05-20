@@ -1,13 +1,12 @@
 {
   "description": "Веса компонентов для итогового скора",
-  "version": "1.1",
+  "version": "1.0",
   "weights": {
-    "tables": 0.20,
-    "operators": 0.20,
-    "logical": 0.20, 
+    "tables": 0.25,
+    "operators": 0.30,
     "aggregations": 0.15,
     "order": 0.10,
     "limit": 0.05,
-    "hallucination": 0.10
+    "hallucination": 0.15
   }
 }
