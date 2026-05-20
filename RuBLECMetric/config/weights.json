@@ -1,6 +1,6 @@
 {
   "description": "Веса компонентов для итогового скора",
-  "version": "1.0",
+  "version": "1.1",
   "weights": {
     "tables": 0.20,
     "operators": 0.20,
